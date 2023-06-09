@@ -1,28 +1,18 @@
 #pragma once
 
-#include <Wifi.h>
+#include <WiFi.h>
+#include "rc5.h"
 
 class WebServer
 {
   WiFiServer d_server;
-
-  enum Event
-  {
-    VOLUME_UP_START,
-    VOLUME_DOWN_START,
-    STOP,
-    EMPTY,
-
-    EVENTLIST_SIZE = 10
-  };
-
-  Event d_eventList[EVENTLIST_SIZE];
-  int d_currentEventIndex = 0;
+  String const d_volumeUpUrl = "/volup";
+  String const d_volumeDnUrl = "/voldn";
+  static String const s_webpage;
 
 public:
   WebServer(int port);
   void begin();
-  bool handle();
-  void execute();
+  bool handle(RC5::Generator &generator);
   
 }; // class WebServer

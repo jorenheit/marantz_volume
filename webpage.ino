@@ -1,9 +1,10 @@
-/*
-char const *pageString = R"(
+#include "webserver.h"
+
+String const WebServer::s_webpage = R"(
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
   <style>
     body {
       display: flex;
@@ -26,13 +27,17 @@ char const *pageString = R"(
       width: 0;
       height: 0;
       border-style: solid;
-      border-width: 0 50px 86.6px 50px; 
+      border-width: 0 50px 86.6px 50px;
       border-color: transparent transparent #000 transparent;
       display: flex;
       justify-content: center;
       align-items: center;
       background-color: #f2f2f2;
-      margin-bottom: 20px; 
+      margin-bottom: 20px;
+      touch-action: manipulation;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 4px;
     }
 
     .volume-down {
@@ -45,7 +50,7 @@ char const *pageString = R"(
       font-family: Arial, sans-serif;
       margin-bottom: 10px;
     }
-    
+
     @media screen and (min-width: 480px) {
       .volume-button {
         border-width: 0 75px 129.9px 75px;
@@ -58,16 +63,68 @@ char const *pageString = R"(
       }
     }
   </style>
+
 </head>
 <body>
   <h1>Marantz Volume</h1>
-  <div class="volume-buttons">
-    <a class="volume-button" href="/volup"></a>
-    <a class="volume-button volume-down" href="/voldn"></a>
-  </div>
+  <p class='element'></p>
+  <div class='volume-buttons'></div>
 </body>
+  <script>
+    var volUpUrl     = '/volup';
+    var volDnUrl     = '/voldn';
+
+    var repeatRequestInterval = 100; // ms
+    var repeatTimer = undefined;
+
+    function sendRequest(url) {
+      fetch(url, { method: 'GET',  })
+        .then(function(response) {
+          // Handle the response if needed
+        })
+        .catch(function(error) {
+          console.log('Error:', error);
+        });
+    }
+
+    // Create buttons
+    var volumeUpButton = document.createElement('a');
+    var volumeDownButton = document.createElement('a');
+
+    volumeUpButton.classList.add('volume-button');
+    volumeDownButton.classList.add('volume-button', 'volume-down');
+
+    function eventHandler(url) {
+      console.log(url);
+      if (url === undefined) // user released the button
+      {
+        clearInterval(repeatTimer);
+        return;
+      }
+
+      sendRequest(url);
+      repeatTimer = setInterval(() => sendRequest(url + 'hold'), repeatRequestInterval);  
+    }
+    
+    var start = 'touchstart';
+    var stop = 'touchend';
+
+    volumeUpButton.addEventListener(start, () => 
+      eventHandler(volUpUrl));
+
+    volumeUpButton.addEventListener(stop,() => 
+      eventHandler(undefined));
+    
+    volumeDownButton.addEventListener(start, () => 
+      eventHandler(volDnUrl));
+
+    volumeDownButton.addEventListener(stop,() => 
+      eventHandler(undefined));
+    
+    var volumeButtonsContainer = document.querySelector('.volume-buttons');
+    volumeButtonsContainer.appendChild(volumeUpButton);
+    volumeButtonsContainer.appendChild(volumeDownButton);
+  </script>
 </html>
 
 )";
-
-*/

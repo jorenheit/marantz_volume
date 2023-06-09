@@ -1,9 +1,12 @@
+#include <WiFi.h>
+#include <EEPROM.h>
 #include "network.h"
 
 bool Network::s_initialized = false;
 String Network::s_ssid = "";
 String Network::s_password = "";
-
+volatile bool Network::s_statusFlag = false;
+Timer<1> *Network::s_timer = nullptr;
 
 bool Network::init()
 {
@@ -21,66 +24,72 @@ bool Network::init()
   s_initialized = true;
   fetchSSID();
   fetchPassword();
+
+  // Setup timer to check network status 
+  s_timer = new Timer<1>(WIFI_CHECK_INTERVAL * MICROSECONDS, &setStatusFlag);
+  s_timer->start();
+
   return true;
 }
 
-void Network::connect()
+void Network::connect(bool configure)
 {
   if (!s_initialized)
     init();
-
-  String ssid = getSSID();
-  String password = getPassword();
   
-  if (ssid == "")
+  if (configure)
   {
-    Serial.println("Wifi not configured.");
-    ssid = promptSSID();
-    password = promptPassword();
-  }
-  else if (password == "")
-  {
-    Serial.println("No password set for " + ssid + ".");
-    password = promptPassword();
-  }
-
-  while (true)
-  {
-    Serial.print("Connecting to ");
-    Serial.print(ssid);
-    WiFi.begin(ssid, password);
-    int const timeout = 5; // seconds
-    int count = 0;
-    while (WiFi.status() != WL_CONNECTED && count < timeout) 
+    if (s_ssid == "")
     {
-      delay(1000);
-      Serial.print(".");
-      ++count;
+      Serial.println("Wifi not configured.");
+      promptSSID();
+      promptPassword();
     }
-
-    if (count != timeout)
-      break;
-
-    Serial.println("\nCould not connect to network.");
-    ssid = promptSSID();
-    password = promptPassword();
+    else if (s_password == "")
+    {
+      Serial.println("No password set for " + s_ssid + ".");
+      promptPassword();
+    }
   }
 
-  Serial.print("\nWiFi connected.\nIP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.print("Connecting to ");
+  Serial.print(s_ssid);
+
+  WiFi.disconnect(); // break any previous connections
+  WiFi.setHostname(HOSTNAME);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(s_ssid, s_password);
+
+  int count = 0;
+  while (WiFi.status() != WL_CONNECTED && count <  WIFI_CONNECTION_TIMEOUT) 
+  {
+    delay(1000);
+    Serial.print(".");
+    ++count;
+  }
+
+  if (count != WIFI_CONNECTION_TIMEOUT) // CONNECTED!    
+  {
+    Serial.print("\nConnected\nIP address: ");
+    Serial.println(WiFi.localIP());
+    s_statusFlag = true;
+    return;
+  }
+
+  Serial.println("\nCould not connect to network.");
 }
 
-String const &Network::getSSID()
+void IRAM_ATTR Network::setStatusFlag()
 {
-  return s_ssid;
+  s_statusFlag = (WiFi.status() == WL_CONNECTED);
 }
 
-String const &Network::getPassword()
+bool Network::statusCheck()
 {
-  return s_password;
+  return s_statusFlag;
 }
 
-bool Network::setSSID(String const ssid)
+bool Network::setSSID(String const &ssid)
 {
   if (!s_initialized) 
   {
@@ -109,7 +118,7 @@ bool Network::setSSID(String const ssid)
   return true;
 }
 
-bool Network::setPassword(String const password)
+bool Network::setPassword(String const &password)
 {
   if (!s_initialized) 
   {
@@ -138,9 +147,7 @@ bool Network::setPassword(String const password)
   return true;
 }
 
-
-
-String Network::promptSSID()
+void Network::promptSSID()
 {
   Serial.print("Please enter SSID: ");
   while (!Serial.available()) 
@@ -154,11 +161,9 @@ String Network::promptSSID()
   Serial.println(ssid);
   if (setSSID(ssid))
     Serial.println("SSID set successfully.");
-
-  return ssid;
 }
 
-String Network::promptPassword()
+void Network::promptPassword()
 {
   Serial.print("Please enter password: ");
   while (!Serial.available()) 
@@ -172,8 +177,6 @@ String Network::promptPassword()
   Serial.println(password);
   if (setPassword(password))
     Serial.println("Password set successfully.");
-
-  return password;
 }
 
 bool Network::reset()
@@ -190,10 +193,10 @@ void Network::fetchSSID()
 {
   if (!s_initialized) s_ssid = "";
 
-  byte const ssidLen = EEPROM.read(Memory::SSID_BUFFER_START); 
+  byte const len = EEPROM.read(Memory::SSID_BUFFER_START); 
 
   s_ssid = "";
-  for (int i = 0; i != ssidLen; ++i)
+  for (int i = 0; i != len; ++i)
     s_ssid += static_cast<char>(EEPROM.read(Memory::SSID_BUFFER_START + 1 + i));
 }
 
@@ -201,10 +204,9 @@ void Network::fetchPassword()
 {
   if (!s_initialized) s_password = "";
 
-  byte const passLen = EEPROM.read(Memory::PASSWORD_BUFFER_START);
+  byte const len = EEPROM.read(Memory::PASSWORD_BUFFER_START);
 
   s_password = "";
-  for (int i = 0; i != passLen; ++i)
+  for (int i = 0; i != len; ++i)
     s_password += static_cast<char>(EEPROM.read(Memory::PASSWORD_BUFFER_START + 1 + i));
 }
- 

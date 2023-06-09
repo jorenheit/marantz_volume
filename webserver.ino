@@ -1,19 +1,15 @@
 #include "webserver.h"
-#include "webpage.h"
 
 WebServer::WebServer(int port):
   d_server(port)
-{
-  for (int i = 0; i != EVENTLIST_SIZE; ++i)
-    d_eventList[i] = EMPTY;
-}
+{}
 
 void WebServer::begin()
 {
   d_server.begin();
 }
 
-bool WebServer::handle()
+bool WebServer::handle(RC5::Generator &generator)
 {
   WiFiClient client = d_server.available();
 
@@ -39,35 +35,31 @@ bool WebServer::handle()
       {                    
         if (currentLine.length() == 0) 
         {
-          int indexVolUp = header.indexOf("GET /volup");
-          int indexVolDown = header.indexOf("GET /voldown");
-          int indexStop = header.indexOf("GET /stop");
-
-          auto getCounter = [&]() -> int {
-            int from = header.indexOf("counter=") + String("counter=").length();
-            int to = header.indexOf(" ", from);
-            String counter = header.substring(from, to);
-            return counter.toInt();
-          };
+          int indexVolUp = header.indexOf(String("GET ") +  d_volumeUpUrl);
+          int indexVolDn = header.indexOf(String("GET ") +  d_volumeDnUrl);
 
           if (indexVolUp >= 0) 
           {
-            int counter = getCounter();
-            d_eventList[counter % EVENTLIST_SIZE] = VOLUME_UP_START;
+            bool toggle = (header.indexOf(d_volumeUpUrl + String("hold")) < 0);
+            generator.push<RC5::VolUp>(toggle);
+           
+            if (toggle)
+              Serial.println("Volume UP");
+            else
+              Serial.println("Hold");
           } 
-          else if (indexVolDown >= 0) 
+          else if (indexVolDn >= 0) 
           {
-            int counter = getCounter();
-            d_eventList[counter % EVENTLIST_SIZE] = VOLUME_DOWN_START;
+            bool toggle = (header.indexOf(d_volumeDnUrl + String("hold")) < 0);
+            generator.push<RC5::VolDn>(toggle);
+            if (toggle)
+               Serial.println("Volume DOWN");
+            else
+              Serial.println("Hold");
           }
-          else if (indexStop >= 0) 
-          {
-            int counter = getCounter();
-            d_eventList[counter % EVENTLIST_SIZE] = STOP;
-          }
-     
-          // Pass the eventListIndex to the javascript to sync indices
-          client.print(pageString);
+          else
+            client.print(s_webpage);
+
           break;
         } 
         else
@@ -81,28 +73,4 @@ bool WebServer::handle()
   // Close the connection
   client.stop();
   return true;
-}
-
-void WebServer::execute()
-{
-  while (true)
-  {
-    switch(d_eventList[d_currentEventIndex])
-    {
-      case EMPTY:
-        return;
-      case VOLUME_UP_START:
-        Serial.println("Volume UP"); 
-        break;
-      case VOLUME_DOWN_START:
-        Serial.println("Volume DOWN");
-        break;
-      case STOP:
-        Serial.println("STOP");
-        break;
-    }
-
-    d_eventList[d_currentEventIndex++] = EMPTY;
-    d_currentEventIndex %= EVENTLIST_SIZE;
-  }
 }

@@ -1,7 +1,5 @@
 #pragma once
-
-#include <WiFi.h>
-#include <EEPROM.h>
+#include "timer.h"
 
 class Network
 {
@@ -21,31 +19,39 @@ class Network
       PASSWORD_BUFFER_SIZE = 50,
 
       SSID_BUFFER_START = 1,
-      PASSWORD_BUFFER_START = 1 + (1 + SSID_BUFFER_SIZE),
+      PASSWORD_BUFFER_START = SSID_BUFFER_START + (1 + SSID_BUFFER_SIZE),
 
-      SIZE = 1 + (1 + SSID_BUFFER_SIZE) + (1 + PASSWORD_BUFFER_SIZE)
+      SIZE = 1 + (1 + SSID_BUFFER_SIZE) + (1 + PASSWORD_BUFFER_SIZE),
+      MAX_EEPROM_BYTES = 512
     };
+
+    static_assert(SIZE <= MAX_EEPROM_BYTES, "too many bytes allocated to EEPROM");
   };
 
   static bool s_initialized;
   static String s_ssid;
   static String s_password;
+  volatile static bool s_statusFlag;
+
+  static Timer<1> *s_timer;
 
 public:
-  static bool init();
-  static void connect();
+  static void connect(bool configure = true);
+  static bool statusCheck();
   
-  static String const &getSSID();
-  static String const &getPassword();
-  static String promptSSID();
-  static String promptPassword();
+  static void promptSSID();
+  static void promptPassword();
 
 
 private:
+  static void setStatusFlag();
+  static bool init();
+  static bool init(String const &hostname);
   static bool reset();
+  
   static void fetchSSID();
   static void fetchPassword();
-  static bool setSSID(String const ssid);
-  static bool setPassword(String const password);
 
+  static bool setSSID(String const &ssid);
+  static bool setPassword(String const &password);
 }; // class Network

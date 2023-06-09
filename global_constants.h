@@ -1,0 +1,10 @@
+#pragma once
+
+#define SERVER_PORT 80
+#define INTERRUPT_INTERVAL_MICROS 889
+#define DATA_PIN 16
+#define LED_PIN 2 
+#define WIFI_CONNECTION_TIMEOUT 5
+#define HOSTNAME "marantz"
+#define WIFI_CHECK_INTERVAL 10
+#define MICROSECONDS 1000000
