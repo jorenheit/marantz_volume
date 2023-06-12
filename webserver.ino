@@ -122,7 +122,6 @@ void WebServer::volumeDown(IPAddress const &clientIP)
 
       if (clientIP == d_activeClientIP)
       {    
-        //d_generator.schedule<RC5::VolumeDown>(false);
         d_currentState = State::IDLE;
       }
         

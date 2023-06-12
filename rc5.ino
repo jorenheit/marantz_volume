@@ -55,15 +55,6 @@ RC5::Bit IRAM_ATTR RC5::Generator::Buffer::nextBit()
       d_currentBuffer = !d_currentBuffer;
       d_newSignalScheduled = false;
     }
-    /*
-    else if (not d_repeat[d_currentBuffer])
-    {
-      // We're done -> idle
-      memcpy(&d_buffer[d_currentBuffer][0], &package<None>[0], N_BITS);
-      memcpy(&d_buffer[d_currentBuffer][2 * N_BITS], &package<None>[0], N_BITS);
-      d_repeat[d_currentBuffer] = true;
-    }
-    */
   }
 
   return bit;

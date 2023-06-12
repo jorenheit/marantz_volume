@@ -88,10 +88,9 @@ namespace RC5
       // by around 25 ms. The IDLE bits are set in the constructor and never
       // accessed afterwards.
 
-      static constexpr int BUFSIZE = 4 * N_BITS;
+      static constexpr int BUFSIZE = 2 * N_BITS;
       Bit d_buffer[2][BUFSIZE];
       
-      //volatile bool d_repeat[2]  = {true, true};
       volatile int d_currentIndex = 0;
       volatile bool d_currentBuffer = 1;
       volatile bool d_newSignalScheduled = false;
@@ -102,7 +101,7 @@ namespace RC5
       Bit nextBit();
 
       template <typename SignalType>
-      bool schedule(/*bool const repeat*/);
+      bool schedule();
 
     }; // class Buffer
 
@@ -124,43 +123,38 @@ namespace RC5
     void write(int const pin);
 
     template <typename SignalType>
-    void schedule(/*bool const repeat = true*/);
+    void schedule();
 
   }; // class Generator
 
 // TEMPLATE IMPLEMENTATIONS
 
   template <typename SignalType>
-  void Generator::schedule(/*bool const repeat*/)
+  void Generator::schedule()
   {
     bool success = false;
     while (!success)
     {
       stop();
       {
-        success = d_buffer.schedule<SignalType>(/*repeat*/);
+        success = d_buffer.schedule<SignalType>();
       }
       start();
     }
   }
 
   template <typename SignalType>
-  bool Generator::Buffer::schedule(/*bool const repeat*/)
+  bool Generator::Buffer::schedule()
   {
     if (d_newSignalScheduled)
       return false;
 
     bool nextBuffer = !d_currentBuffer;
-
     memcpy(&d_buffer[nextBuffer][0], &package<SignalType>[0], N_BITS);
-    //memcpy(&d_buffer[nextBuffer][2 * N_BITS], &package<SignalType>[0], N_BITS);
-    //d_repeat[nextBuffer] = repeat;
 
-    // Is this even necessary???!!!
     if constexpr (SignalType::command != Command::NO_OP)
     {
       d_buffer[nextBuffer][TOGGLE_BIT] = d_toggleBit;
-      //d_buffer[nextBuffer][2 * N_BITS + TOGGLE_BIT] = d_toggleBit;
       d_toggleBit = !d_toggleBit;
     }
 
