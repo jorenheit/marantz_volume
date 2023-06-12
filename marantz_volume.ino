@@ -5,7 +5,6 @@
 #include "global_constants.h"
 
 WebServer server{SERVER_PORT};
-RC5::Generator generator{INTERRUPT_INTERVAL_MICROS};
 Menu menu;
 
 void setup() 
@@ -27,9 +26,6 @@ void setup()
 
   // Display the menu after boot
   menu.welcome();
-
-  // Start the signal-generator
-  generator.start();
 }
 
 void loop()
@@ -37,7 +33,11 @@ void loop()
   menu.handle();
 
   if (Network::statusCheck())
-    server.handle(generator);
+  {
+    server.handle();
+  }
   else
+  {
     Network::connect(false);
+  }
 }

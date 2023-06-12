@@ -15,11 +15,9 @@ namespace RC5
 
   enum Command
   {
-    VOL_UP = 0x10,
-    VOL_DN = 0x11,
-    MUTE   = 0x0D,
-    POWER  = 0x0C,
-    NO_OP  = 0x00
+    VOLUME_UP = 0x10,
+    VOLUME_DN = 0x11,
+    NO_OP     = 0x00
   };
 
   static constexpr byte TOGGLE_BIT = 2;
@@ -33,13 +31,12 @@ namespace RC5
     static constexpr byte command = Command;
   };
 
-  using VolUp = Signal<AMP, VOL_UP>;
-  using VolDn = Signal<AMP, VOL_DN>;
-  using Mute =  Signal<AMP, MUTE>;
-  using Power =  Signal<AMP, POWER>;
+  using VolumeUp   = Signal<AMP, VOLUME_UP>;
+  using VolumeDown = Signal<AMP, VOLUME_DN>;
+  using None       = Signal<NO_ADDR, NO_OP>;
 
   template <typename SignalType>
-  constexpr Bit Package[N_BITS] =   {
+  constexpr Bit package[N_BITS] =   {
     1, 
     1,
     0, // togglebit 
@@ -58,26 +55,58 @@ namespace RC5
     !!(SignalType::command & (1 << 0))
   };
 
+  template<>
+  constexpr Bit package<None>[N_BITS] = {
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE,
+    IDLE_VALUE
+  };
 
   class Generator
   {
-    template <int BufferSize>
     class Buffer
     {
-      Bit d_buffer[BufferSize * N_BITS];
-      int d_pushIndex = 0;
-      int d_nextIndex = 0;
+      // Double buffer: new events will be scheduled in the second buffer.
+      // We will switch buffers whenever a new signal is present and the 
+      // current signal has been emitted.
+
+      // The first part of a buffer contains an RC5 signal, while the second
+      // half contains a bunch of IDLE-bits to separate consecutive commands
+      // by around 25 ms. The IDLE bits are set in the constructor and never
+      // accessed afterwards.
+
+      static constexpr int BUFSIZE = 4 * N_BITS;
+      Bit d_buffer[2][BUFSIZE];
+      
+      //volatile bool d_repeat[2]  = {true, true};
+      volatile int d_currentIndex = 0;
+      volatile bool d_currentBuffer = 1;
+      volatile bool d_newSignalScheduled = false;
+      volatile bool d_toggleBit = 0;
 
     public:
       Buffer();
-
-      template<typename SignalType>
-      void push(bool const toggle = true);
-      
       Bit nextBit();
-    };
 
-    Buffer<10> d_buffer; // buffers 10 commands
+      template <typename SignalType>
+      bool schedule(/*bool const repeat*/);
+
+    }; // class Buffer
+
+    Buffer d_buffer;
     Timer<0> *d_timer = nullptr;
 
     struct ISR
@@ -89,70 +118,55 @@ namespace RC5
   public:
     Generator(long const micros);
     ~Generator();
+
     void start();
     void stop();
     void write(int const pin);
 
     template <typename SignalType>
-    void push(bool const toggle = true);
+    void schedule(/*bool const repeat = true*/);
 
   }; // class Generator
 
 // TEMPLATE IMPLEMENTATIONS
 
   template <typename SignalType>
-  void Generator::push(bool const toggle)
+  void Generator::schedule(/*bool const repeat*/)
   {
-    // While pushing signals, stop the timer to make
-    // sure the entire package is in the buffer when the 
-    // timer fires
-
-    d_timer->stop();
+    bool success = false;
+    while (!success)
     {
-      d_buffer.push<SignalType>(toggle);
+      stop();
+      {
+        success = d_buffer.schedule<SignalType>(/*repeat*/);
+      }
+      start();
     }
-    d_timer->start();
-
-    //delay(50); // small delay to separate commands
   }
 
-  template <int BufferSize>
-  Generator::Buffer<BufferSize>::Buffer()
+  template <typename SignalType>
+  bool Generator::Buffer::schedule(/*bool const repeat*/)
   {
-    memset(&d_buffer[0], IDLE_VALUE, sizeof(d_buffer));
-  }
+    if (d_newSignalScheduled)
+      return false;
 
-  template <int BufferSize>
-  template<typename SignalType>
-  void Generator::Buffer<BufferSize>::push(bool const toggle)
-  {
-    static bool toggleValue = 1;
+    bool nextBuffer = !d_currentBuffer;
 
-    memcpy(&d_buffer[d_pushIndex * N_BITS], &Package<SignalType>[0], N_BITS);
-    if (toggle)
+    memcpy(&d_buffer[nextBuffer][0], &package<SignalType>[0], N_BITS);
+    //memcpy(&d_buffer[nextBuffer][2 * N_BITS], &package<SignalType>[0], N_BITS);
+    //d_repeat[nextBuffer] = repeat;
+
+    // Is this even necessary???!!!
+    if constexpr (SignalType::command != Command::NO_OP)
     {
-      d_buffer[d_pushIndex * N_BITS + TOGGLE_BIT] = toggleValue;
-      toggleValue = !toggleValue;
-    }
-
-    if (++d_pushIndex == BufferSize)
-      d_pushIndex = 0;
-  }
-
-  template <int BufferSize>
-  Bit Generator::Buffer<BufferSize>::nextBit()
-  {
-    Bit &bit = d_buffer[d_nextIndex];
-    Bit const copy = bit;
-    if (bit != IDLE_VALUE)
-    {
-      ++d_nextIndex;
-      d_nextIndex %= BufferSize * N_BITS;
-      bit = IDLE_VALUE;
+      d_buffer[nextBuffer][TOGGLE_BIT] = d_toggleBit;
+      //d_buffer[nextBuffer][2 * N_BITS + TOGGLE_BIT] = d_toggleBit;
+      d_toggleBit = !d_toggleBit;
     }
 
-    return copy;
-  }
+    d_newSignalScheduled = true;
+    return true; 
+  }  
 
 } // namespace RC5
 

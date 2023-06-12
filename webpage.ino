@@ -67,20 +67,17 @@ String const WebServer::s_webpage = R"(
 </head>
 <body>
   <h1>Marantz Volume</h1>
-  <p class='element'></p>
   <div class='volume-buttons'></div>
 </body>
   <script>
-    var volUpUrl     = '/volup';
-    var volDnUrl     = '/voldn';
-
-    var repeatRequestInterval = 100; // ms
-    var repeatTimer = undefined;
+    const volUpUrl = '/volup';
+    const volDnUrl = '/voldn';
+    const stopUrl  = '/stop';
 
     function sendRequest(url) {
       fetch(url, { method: 'GET',  })
         .then(function(response) {
-          // Handle the response if needed
+          // ignore response
         })
         .catch(function(error) {
           console.log('Error:', error);
@@ -94,32 +91,20 @@ String const WebServer::s_webpage = R"(
     volumeUpButton.classList.add('volume-button');
     volumeDownButton.classList.add('volume-button', 'volume-down');
 
-    function eventHandler(url) {
-      console.log(url);
-      if (url === undefined) // user released the button
-      {
-        clearInterval(repeatTimer);
-        return;
-      }
+    const startEvent = 'touchstart';
+    const stopEvent = 'touchend';
 
-      sendRequest(url);
-      repeatTimer = setInterval(() => sendRequest(url + 'hold'), repeatRequestInterval);  
-    }
+    volumeUpButton.addEventListener(startEvent, () => 
+      sendRequest(volUpUrl));
+
+    volumeUpButton.addEventListener(stopEvent, () => 
+      sendRequest(stopUrl));
     
-    var start = 'touchstart';
-    var stop = 'touchend';
+    volumeDownButton.addEventListener(startEvent, () => 
+      sendRequest(volDnUrl));
 
-    volumeUpButton.addEventListener(start, () => 
-      eventHandler(volUpUrl));
-
-    volumeUpButton.addEventListener(stop,() => 
-      eventHandler(undefined));
-    
-    volumeDownButton.addEventListener(start, () => 
-      eventHandler(volDnUrl));
-
-    volumeDownButton.addEventListener(stop,() => 
-      eventHandler(undefined));
+    volumeDownButton.addEventListener(stopEvent, () => 
+      sendRequest(stopUrl));
     
     var volumeButtonsContainer = document.querySelector('.volume-buttons');
     volumeButtonsContainer.appendChild(volumeUpButton);
