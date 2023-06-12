@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <EEPROM.h>
+#include <ESPmDNS.h>
 #include "network.h"
 
 bool Network::s_initialized = false;
@@ -26,7 +27,7 @@ bool Network::init()
   fetchPassword();
 
   // Setup timer to check network status 
-  s_timer = new Timer<1>(WIFI_CHECK_INTERVAL * MICROSECONDS, &setStatusFlag);
+  s_timer = new Timer<TIMER_NETWORK_CHECK>(WIFI_CHECK_INTERVAL, &setStatusFlag);
   s_timer->start();
 
   return true;
@@ -72,6 +73,20 @@ void Network::connect(bool configure)
   {
     Serial.print("\nConnected\nIP address: ");
     Serial.println(WiFi.localIP());
+
+    bool mdnsStatus = false;
+    for (int i = 0; i != MDNS_MAX_TRIES; ++i)
+    {
+      if (MDNS.begin(HOSTNAME))
+      {
+        mdnsStatus = true;
+        break;
+      }
+      delay(1000);
+    }
+
+    Serial.println(mdnsStatus ? "MDNS OK" : "MDNS failed");
+
     s_statusFlag = true;
     return;
   }

@@ -4,6 +4,8 @@
 template <int TimerID>
 class Timer
 {
+  static_assert(TimerID < 4, "Invalid Timer ID (must be < 4)");
+
   static hw_timer_t *s_hwtimer;
 
 public:

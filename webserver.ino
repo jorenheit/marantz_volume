@@ -44,21 +44,18 @@ bool WebServer::handle()
 
           if (indexVolUp >= 0) 
           {
-            Serial.println("Volume UP");
-            volumeUp(ip);
+            execute<Command::VOLUME_UP>(ip);
           } 
           else if (indexVolDn >= 0) 
           {
-            Serial.println("Volume DOWN");
-            volumeDown(ip);
+            execute<Command::VOLUME_DOWN>(ip);
           }
           else if (indexStop >= 0)
           {
-            Serial.println("STOP");
-            volumeStop(ip);
+            execute<Command::STOP>(ip);
           }
-          else
-            client.print(s_webpage);
+          
+          client.print(s_webpage);
 
           break;
         } 
@@ -75,84 +72,9 @@ bool WebServer::handle()
   return true;
 }
 
-void WebServer::volumeUp(IPAddress const &clientIP)
+void WebServer::reset()
 {
-  switch (d_currentState)
-  {
-    case State::IDLE:
-    {
-      d_generator.schedule<RC5::VolumeUp>();
-      d_activeClientIP = clientIP;
-      d_currentState = State::VOLUME_UP;
-      return;
-    }
-    case State::VOLUME_CHANGE_STOP:
-    {
-      // Server already in stopped state, apparently the 
-      // stop signal arrived before the action-signal. 
-      // Ignore and set state to IDLE.
-
-      if (clientIP == d_activeClientIP)
-      {
-        d_currentState = State::IDLE;
-      }
-      return;
-    }
-    // In all other cases: ignore this signal
-    default: return;
-  }
-}
-
-void WebServer::volumeDown(IPAddress const &clientIP)
-{
-  switch (d_currentState)
-  {
-    case State::IDLE:
-    {
-      d_generator.schedule<RC5::VolumeDown>();
-      d_activeClientIP = clientIP;
-      d_currentState = State::VOLUME_DOWN;
-      return;
-    }
-    case State::VOLUME_CHANGE_STOP:
-    {
-      // Server already in stopped state; apparently the 
-      // stop signal arrived before the action-signal. Schedule non-repeating
-      // signal and set state to IDLE.
-
-      if (clientIP == d_activeClientIP)
-      {    
-        d_currentState = State::IDLE;
-      }
-        
-      return;
-    }
-    // In all other cases: ignore this signal
-    default: return;
-  }
-}
-
-void WebServer::volumeStop(IPAddress const &clientIP)
-{
-  switch (d_currentState)
-  {
-    case State::IDLE:
-    {
-      // Stop signal arrived before action. Do nothing now but change
-      // state to STOP. The next action signal from this client will
-      // be executed once immediately.
-      d_activeClientIP = clientIP;
-      d_currentState = State::VOLUME_CHANGE_STOP;
-      return;
-    }
-    default:
-    {
-      if (clientIP == d_activeClientIP) // only listen to stop command from the active client
-      {
-        d_generator.schedule<RC5::None>();
-        d_currentState = State::IDLE;
-      }
-      return;
-    }
-  }
+  d_generator.reset();
+  d_activeClientIP = IPAddress{};
+  d_currentState = State::IDLE;
 }

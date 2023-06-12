@@ -91,22 +91,23 @@ namespace RC5
       static constexpr int BUFSIZE = 2 * N_BITS;
       Bit d_buffer[2][BUFSIZE];
       
-      volatile int d_currentIndex = 0;
-      volatile bool d_currentBuffer = 1;
-      volatile bool d_newSignalScheduled = false;
-      volatile bool d_toggleBit = 0;
+      volatile int d_currentIndex;
+      volatile bool d_currentBuffer;
+      volatile bool d_newSignalScheduled;
+      volatile bool d_toggleBit;
 
     public:
       Buffer();
       Bit nextBit();
 
+      void reset();
+
       template <typename SignalType>
       bool schedule();
-
     }; // class Buffer
 
     Buffer d_buffer;
-    Timer<0> *d_timer = nullptr;
+    Timer<TIMER_SIGNAL> *d_timer = nullptr;
 
     struct ISR
     {
@@ -120,7 +121,8 @@ namespace RC5
 
     void start();
     void stop();
-    void write(int const pin);
+    void write();
+    void reset();
 
     template <typename SignalType>
     void schedule();

@@ -75,7 +75,7 @@ String const WebServer::s_webpage = R"(
     const stopUrl  = '/stop';
 
     function sendRequest(url) {
-      fetch(url, { method: 'GET',  })
+      fetch(url, { method: 'GET',  mode: 'no-cors'})
         .then(function(response) {
           // ignore response
         })

@@ -2,6 +2,7 @@
 #include "network.h"
 #include "webserver.h"
 #include "menu.h"
+#include "ledcontroller.h"
 #include "global_constants.h"
 
 WebServer server{SERVER_PORT};
@@ -9,14 +10,11 @@ Menu menu;
 
 void setup() 
 {
-  // Power on LED active
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);
-  
-  pinMode(DATA_PIN, OUTPUT);
-
   Serial.begin(115200);
   Serial.println("============== Device boot complete ==============");
+
+  LedController::init();
+  LedController::on();
 
   // Connect to network using information stored in EEPROM
   Network::connect();
@@ -34,10 +32,12 @@ void loop()
 
   if (Network::statusCheck())
   {
+    LedController::on();
     server.handle();
   }
   else
   {
+    LedController::blink();
     Network::connect(false);
   }
 }

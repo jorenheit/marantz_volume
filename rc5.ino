@@ -5,22 +5,19 @@ RC5::Generator *RC5::Generator::ISR::self = nullptr;
 
 void IRAM_ATTR RC5::Generator::ISR::isr() 
 {
-  self->write(DATA_PIN);
+  self->write();
 }    
 
 RC5::Generator::Generator(long const micros)
 {
   ISR::self = this;
-  d_timer = new Timer<0>(micros, &ISR::isr);
+  pinMode(DATA_PIN, OUTPUT);
+  d_timer = new Timer<TIMER_SIGNAL>(micros, &ISR::isr);
 }
 
 RC5::Generator::Buffer::Buffer()
 {
-  for (int i = 0; i != BUFSIZE; ++i)
-  {
-    d_buffer[0][i] = IDLE_VALUE;
-    d_buffer[1][i] = IDLE_VALUE;
-  }
+  reset();
 }
 
 RC5::Generator::~Generator()
@@ -60,7 +57,7 @@ RC5::Bit IRAM_ATTR RC5::Generator::Buffer::nextBit()
   return bit;
 }
 
-void IRAM_ATTR RC5::Generator::write(int const pin)
+void IRAM_ATTR RC5::Generator::write()
 {
   static bool phase = 0;
   static Bit currentBit = IDLE_VALUE;
@@ -68,7 +65,7 @@ void IRAM_ATTR RC5::Generator::write(int const pin)
   if (phase == 0)
     currentBit = d_buffer.nextBit();
 
-  digitalWrite(pin, (currentBit == IDLE_VALUE) ? 0 : !(currentBit ^ phase));
+  digitalWrite(DATA_PIN, (currentBit == IDLE_VALUE) ? 0 : !(currentBit ^ phase));
   phase = !phase;
 
   /*  
@@ -87,4 +84,28 @@ void IRAM_ATTR RC5::Generator::write(int const pin)
 
   ==> output = !(bit ^ phase)
   */
+}
+
+void RC5::Generator::reset()
+{
+  stop();
+  {
+    digitalWrite(DATA_PIN, 0);
+    d_buffer.reset();
+  }
+  start();
+}
+
+void RC5::Generator::Buffer::reset()
+{
+  for (int i = 0; i != BUFSIZE; ++i)
+  {
+    d_buffer[0][i] = IDLE_VALUE;
+    d_buffer[1][i] = IDLE_VALUE;
+  }
+
+  d_currentIndex = 0;
+  d_currentBuffer = 0;
+  d_newSignalScheduled = false;
+  d_toggleBit = 0;
 }
