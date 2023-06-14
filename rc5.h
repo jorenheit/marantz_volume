@@ -155,7 +155,6 @@ namespace RC5
 
     bool nextBuffer = !d_currentBuffer;
     memcpyToBuffer<SignalType>(nextBuffer);
-    //memcpy(&d_buffer[nextBuffer][0], &package<SignalType>[0], N_BITS);
 
     if constexpr (SignalType::command != Command::NO_OP)
     {

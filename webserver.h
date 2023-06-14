@@ -17,9 +17,9 @@ enum class Command
   STOP
 };
 
-template <State, Command>
-struct StateMachine;
-
+template <Command>
+struct CommandToSignalType;
+#include "commandtosignaltype_impl.h"
 
 class WebServer
 {
@@ -39,24 +39,44 @@ public:
   bool handle();
 
 private:
-  template <State, Command>
-  friend struct StateMachine;
+  void reset();
 
   template <Command Cmd>
-  void execute(IPAddress const &clientIP)
-  {
-    switch (d_currentState)
-    {
-      case State::IDLE          : StateMachine<State::IDLE          , Cmd>::execute(*this, clientIP); break;
-      case State::VOLUME_CHANGE : StateMachine<State::VOLUME_CHANGE , Cmd>::execute(*this, clientIP); break;
-      default                   : d_currentState = State::INVALID; break;
-    }
-
-    if (d_currentState == State::INVALID)
-      reset();
-  }
-
-  void reset();
+  void execute(IPAddress const &clientIP);
 }; // class WebServer
 
-#include "statemachine_impl.h"
+
+// Statemachine to handle commands:
+template <Command Cmd>
+void WebServer::execute(IPAddress const &clientIP)
+{
+  switch (d_currentState)
+  {
+    case State::IDLE:
+    {
+      d_generator.schedule<typename CommandToSignalType<Cmd>::SignalType>();
+      d_activeClientIP = clientIP;
+      d_currentState = (Cmd == Command::STOP) ? State::INVALID : State::VOLUME_CHANGE; 
+      break;
+    }
+    case State::VOLUME_CHANGE:
+    {
+      if constexpr (Cmd == Command::STOP)
+      {
+        if (clientIP == d_activeClientIP)
+        {
+          d_generator.schedule<RC5::None>();
+          d_currentState = State::IDLE;
+        }
+      }
+      else
+      {
+        d_currentState = State::INVALID;
+      }
+      break;
+    }
+  }
+
+  if (d_currentState == State::INVALID)
+    reset();
+}

@@ -37,15 +37,11 @@ RC5::Bit IRAM_ATTR RC5::Generator::Buffer::nextBit()
   Bit bit = d_buffer[d_currentBuffer][d_currentIndex++];
   d_currentIndex %= BUFSIZE;
 
-  // Check if we need to switch buffers in case the index just 
-  // wrapped around.
   static int count = 0;
   static bool timedOut = false;
 
   if (d_currentIndex == 0)
   {
-    bool const repeatLimitReached = (++count >= MAX_SIGNAL_REPEAT);
-
     if (d_newSignalScheduled)
     {
       // Switch buffers
@@ -54,11 +50,10 @@ RC5::Bit IRAM_ATTR RC5::Generator::Buffer::nextBit()
       count = 0;
       timedOut = false;
     }
-    else if (repeatLimitReached && !timedOut)
+    else if (++count >= MAX_SIGNAL_REPEAT && !timedOut)
     {
       // Clear current buffer to prevent additional signals from being sent
       memcpyToBuffer<None>(d_currentBuffer);
-//      memcpy(&d_buffer[d_currentBuffer][0], &package<None>[0], N_BITS);
       timedOut = true;
     }
   }
