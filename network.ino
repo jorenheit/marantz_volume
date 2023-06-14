@@ -3,11 +3,13 @@
 #include <ESPmDNS.h>
 #include "network.h"
 
+volatile bool Network::s_statusFlag = false;
 bool Network::s_initialized = false;
+
 String Network::s_ssid = "";
 String Network::s_password = "";
-volatile bool Network::s_statusFlag = false;
-Timer<1> *Network::s_timer = nullptr;
+
+Timer<TIMER_NETWORK_CHECK> Network::s_timer{WIFI_CHECK_INTERVAL, &Network::setStatusFlag};
 
 bool Network::init()
 {
@@ -27,8 +29,8 @@ bool Network::init()
   fetchPassword();
 
   // Setup timer to check network status 
-  s_timer = new Timer<TIMER_NETWORK_CHECK>(WIFI_CHECK_INTERVAL, &setStatusFlag);
-  s_timer->start();
+  //s_timer = new Timer<TIMER_NETWORK_CHECK>(WIFI_CHECK_INTERVAL, &setStatusFlag);
+  s_timer.start();
 
   return true;
 }

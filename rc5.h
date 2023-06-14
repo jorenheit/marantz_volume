@@ -104,10 +104,14 @@ namespace RC5
 
       template <typename SignalType>
       bool schedule();
+    
+    private: 
+      template <typename SignalType>
+      void memcpyToBuffer(bool const buffer);
     }; // class Buffer
 
     Buffer d_buffer;
-    Timer<TIMER_SIGNAL> *d_timer = nullptr;
+    Timer<TIMER_SIGNAL> d_timer;
 
     struct ISR
     {
@@ -116,8 +120,7 @@ namespace RC5
     };
 
   public:
-    Generator(long const micros);
-    ~Generator();
+    Generator();
 
     void start();
     void stop();
@@ -126,7 +129,6 @@ namespace RC5
 
     template <typename SignalType>
     void schedule();
-
   }; // class Generator
 
 // TEMPLATE IMPLEMENTATIONS
@@ -152,7 +154,8 @@ namespace RC5
       return false;
 
     bool nextBuffer = !d_currentBuffer;
-    memcpy(&d_buffer[nextBuffer][0], &package<SignalType>[0], N_BITS);
+    memcpyToBuffer<SignalType>(nextBuffer);
+    //memcpy(&d_buffer[nextBuffer][0], &package<SignalType>[0], N_BITS);
 
     if constexpr (SignalType::command != Command::NO_OP)
     {
@@ -163,6 +166,12 @@ namespace RC5
     d_newSignalScheduled = true;
     return true; 
   }  
+
+  template <typename SignalType>
+  void Generator::Buffer::memcpyToBuffer(bool const buffer)
+  {
+    memcpy(&d_buffer[buffer][0], &package<SignalType>[0], N_BITS);
+  }
 
 } // namespace RC5
 

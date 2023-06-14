@@ -1,7 +1,8 @@
 #include "webserver.h"
+#include "global_constants.h"
 
-WebServer::WebServer(int port):
-  d_server(port)
+WebServer::WebServer():
+  d_server(SERVER_PORT)
 {}
 
 void WebServer::begin()

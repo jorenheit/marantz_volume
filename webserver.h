@@ -2,8 +2,6 @@
 
 #include <WiFi.h>
 #include "rc5.h"
-#include "global_constants.h"
-
 
 enum class State
 {
@@ -25,7 +23,7 @@ struct StateMachine;
 
 class WebServer
 {
-  RC5::Generator d_generator{INTERRUPT_INTERVAL_MICROS};
+  RC5::Generator d_generator;
   WiFiServer d_server;
   String const d_volumeUpUrl = "/volup";
   String const d_volumeDnUrl = "/voldn";
@@ -36,7 +34,7 @@ class WebServer
   State d_currentState{State::IDLE};
 
 public:
-  WebServer(int port);
+  WebServer();
   void begin();
   bool handle();
 

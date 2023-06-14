@@ -3,13 +3,13 @@
 
 class LedController
 {
-  static Timer<TIMER_LED_BLINK> *s_timer;
+  Timer<TIMER_LED_BLINK> d_timer;
 
 public:
-  static void init();
-  static void on();
-  static void off();
-  static void blink();
+  LedController();
+  void on();
+  void off();
+  void blink();
 
 private:
   static void blinkISR();

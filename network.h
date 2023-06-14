@@ -34,7 +34,7 @@ class Network
   static String s_password;
   volatile static bool s_statusFlag;
 
-  static Timer<TIMER_NETWORK_CHECK> *s_timer;
+  static Timer<TIMER_NETWORK_CHECK> s_timer;
 
 public:
   static void connect(bool configure = true);

@@ -1,28 +1,26 @@
 #include "ledcontroller.h"
 
-Timer<TIMER_LED_BLINK> *LedController::s_timer = nullptr;
-
-void LedController::init()
+LedController::LedController():
+  d_timer(LED_BLINK_INTERVAL_MICROS, &LedController::blinkISR)
 {
   pinMode(LED_PIN, OUTPUT);
-  s_timer = new Timer<TIMER_LED_BLINK>(LED_BLINK_INTERVAL_MICROS, &LedController::blinkISR);
 }
 
 void LedController::on()
 {
-  s_timer->stop();
+  d_timer.stop();
   digitalWrite(LED_PIN, HIGH);
 }
 
 void LedController::off()
 {
-  s_timer->stop();
+  d_timer.stop();
   digitalWrite(LED_PIN, LOW);
 }
 
 void LedController::blink()
 {
-  s_timer->start();
+  d_timer.start();
 }
 
 void IRAM_ATTR LedController::blinkISR()

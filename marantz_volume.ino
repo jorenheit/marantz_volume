@@ -5,7 +5,8 @@
 #include "ledcontroller.h"
 #include "global_constants.h"
 
-WebServer server{SERVER_PORT};
+LedController led;
+WebServer server;
 Menu menu;
 
 void setup() 
@@ -13,8 +14,8 @@ void setup()
   Serial.begin(115200);
   Serial.println("============== Device boot complete ==============");
 
-  LedController::init();
-  LedController::on();
+  // blink until connection is established
+  led.blink();
 
   // Connect to network using information stored in EEPROM
   Network::connect();
@@ -32,12 +33,12 @@ void loop()
 
   if (Network::statusCheck())
   {
-    LedController::on();
+    led.on();
     server.handle();
   }
   else
   {
-    LedController::blink();
+    led.blink();
     Network::connect(false);
   }
 }

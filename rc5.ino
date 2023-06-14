@@ -8,11 +8,11 @@ void IRAM_ATTR RC5::Generator::ISR::isr()
   self->write();
 }    
 
-RC5::Generator::Generator(long const micros)
+RC5::Generator::Generator():
+  d_timer(SIGNAL_TIMER_INTERVAL_MICROS, &ISR::isr)
 {
   ISR::self = this;
   pinMode(DATA_PIN, OUTPUT);
-  d_timer = new Timer<TIMER_SIGNAL>(micros, &ISR::isr);
 }
 
 RC5::Generator::Buffer::Buffer()
@@ -20,19 +20,14 @@ RC5::Generator::Buffer::Buffer()
   reset();
 }
 
-RC5::Generator::~Generator()
-{
-  delete d_timer;
-}
-
 void RC5::Generator::start()
 {
-  d_timer->start();
+  d_timer.start();
 }
 
 void RC5::Generator::stop()
 {
-  d_timer->stop();
+  d_timer.stop();
   
 }
 
@@ -44,13 +39,27 @@ RC5::Bit IRAM_ATTR RC5::Generator::Buffer::nextBit()
 
   // Check if we need to switch buffers in case the index just 
   // wrapped around.
+  static int count = 0;
+  static bool timedOut = false;
+
   if (d_currentIndex == 0)
   {
+    bool const repeatLimitReached = (++count >= MAX_SIGNAL_REPEAT);
+
     if (d_newSignalScheduled)
     {
       // Switch buffers
       d_currentBuffer = !d_currentBuffer;
       d_newSignalScheduled = false;
+      count = 0;
+      timedOut = false;
+    }
+    else if (repeatLimitReached && !timedOut)
+    {
+      // Clear current buffer to prevent additional signals from being sent
+      memcpyToBuffer<None>(d_currentBuffer);
+//      memcpy(&d_buffer[d_currentBuffer][0], &package<None>[0], N_BITS);
+      timedOut = true;
     }
   }
 
